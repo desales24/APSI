@@ -16,9 +16,9 @@ Livewire::setScriptRoute(function ($handle) {
 /*
 / END
 */
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
 
 use App\Models\Payment;
 
@@ -26,4 +26,14 @@ Route::get('/admin/payment/{payment}/print', function (Payment $payment) {
     $payment->load('order.items.shoe'); // pastikan relasi dimuat
     return view('print.payment', compact('payment'));
 })->name('print.payment');
+
+Route::get('/', function () {
+    return view('components.pages.home');
+})->name('home');
+Route::get('/about', function () {
+    return view('components.pages.about');
+})->name('about');
+Route::get('/order', function () {
+    return view('components.pages.order');
+})->name('order');
 

@@ -2,63 +2,59 @@
 
 namespace App\Filament\Customer\Resources;
 
-use App\Filament\Customer\Resources\ShoeResource\Pages;
-use App\Filament\Customer\Resources\ShoeResource\RelationManagers;
 use App\Models\Shoe;
-use Filament\Forms;
+use App\Models\CategoryShoe;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Customer\Resources\ShoeResource\Pages;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
 
 class ShoeResource extends Resource
 {
     protected static ?string $model = Shoe::class;
-
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-cube';
+    protected static ?string $navigationLabel = 'Katalog Sepatu';
+    protected static ?string $slug = 'katalog-sepatu';
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                //
-            ]);
+        return $form->schema([]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                //
-            ])
-            ->filters([
-                //
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
+                ImageColumn::make('image_url')
+                    ->label('Gambar')
+                    ->size(50)
+                    ->circular()
+                    ->disk('public'),
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
+                TextColumn::make('name')
+                    ->label('Nama Sepatu')
+                    ->searchable(),
+
+                TextColumn::make('category.name')
+                    ->label('Kategori'),
+
+                TextColumn::make('price')
+                    ->label('Harga')
+                    ->money('IDR'),
+
+                TextColumn::make('stock')
+                    ->label('Stok'),
+            ])
+            ->actions([]) // Tidak ada edit
+            ->bulkActions([]); // Tidak ada bulk delete
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListShoes::route('/'),
-            'create' => Pages\CreateShoe::route('/create'),
-            'edit' => Pages\EditShoe::route('/{record}/edit'),
         ];
     }
 }
