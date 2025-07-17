@@ -13,6 +13,8 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Actions\Action;
+use Filament\Notifications\Notification;
 
 class PaymentResource extends Resource
 {
@@ -24,7 +26,11 @@ class PaymentResource extends Resource
         return $form->schema([
             Select::make('order_id')
                 ->label('Pelanggan')
-                ->options(fn () => Order::pluck('customer_name', 'id'))
+                ->options(fn () => Order::whereDoesntHave('payment', function ($query) {
+                    $query->where('status', 'lunas');
+                })->get()->mapWithKeys(function ($order) {
+                    return [$order->id => "{$order->customer_name} - Order #{$order->id}"];
+                }))
                 ->searchable()
                 ->required(),
 
@@ -82,13 +88,30 @@ class PaymentResource extends Resource
                 ImageColumn::make('proof_of_payment')
                     ->label('Bukti Pembayaran')
                     ->circular()
-                    ->size(50)    
-                    ->disk('public')
+                    ->size(50)
+                    ->disk('public'),
             ])
             ->actions([
                 \Filament\Tables\Actions\EditAction::make(),
 
-                \Filament\Tables\Actions\Action::make('print')
+                Action::make('approve')
+                    ->label('Approve')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn ($record) => $record->status === 'belum bayar')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->status = 'lunas';
+                        $record->paid_at = now();
+                        $record->save();
+
+                        Notification::make()
+                            ->title('Pembayaran berhasil disetujui')
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('print')
                     ->label('Cetak Struk')
                     ->icon('heroicon-o-printer')
                     ->url(fn ($record) => route('print.payment', $record))

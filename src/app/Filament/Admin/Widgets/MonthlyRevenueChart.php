@@ -2,8 +2,9 @@
 
 namespace App\Filament\Admin\Widgets;
 
-use App\Models\Order;
+use App\Models\Payment;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Carbon;
 
 class MonthlyRevenueChart extends ChartWidget
 {
@@ -12,24 +13,38 @@ class MonthlyRevenueChart extends ChartWidget
 
     protected function getData(): array
     {
-        $data = Order::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total) as total")
-            ->groupBy('month')
-            ->orderBy('month')
+        // Ambil semua pembayaran lunas yang punya paid_at
+        $payments = Payment::where('status', 'lunas')
+            ->whereNotNull('paid_at')
+            ->with('order')
             ->get();
+
+        // Kelompokkan berdasarkan bulan dari paid_at
+        $grouped = $payments->groupBy(function ($payment) {
+            return Carbon::parse($payment->paid_at)->format('Y-m'); // contoh: 2025-07
+        });
+
+        // Format data
+        $data = $grouped->mapWithKeys(function ($group, $month) {
+            $total = $group->sum(fn ($payment) => $payment->order?->total ?? 0);
+            $label = Carbon::createFromFormat('Y-m', $month)->translatedFormat('F Y'); // contoh: Juli 2025
+            return [$label => (int) $total];
+        });
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Total Pemasukkan',
-                    'data' => $data->pluck('total')->map(fn ($v) => (int) $v), // hilangkan desimal
+                    'label' => 'Total Pemasukkan (Lunas)',
+                    'data' => $data->values(),
+                    'backgroundColor' => '#F59E0B',
                 ],
             ],
-            'labels' => $data->pluck('month'),
+            'labels' => $data->keys(),
         ];
     }
 
     protected function getType(): string
     {
-        return 'bar'; // diagram batang
+        return 'bar';
     }
 }

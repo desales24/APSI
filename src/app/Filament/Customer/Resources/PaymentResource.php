@@ -29,6 +29,7 @@ class PaymentResource extends Resource
                 ->label('Pesanan')
                 ->options(function () {
                     return Order::where('customer_email', Auth::user()->email)
+                        ->whereDoesntHave('payment') // hanya order yang belum ada payment
                         ->pluck('customer_name', 'id');
                 })
                 ->searchable()

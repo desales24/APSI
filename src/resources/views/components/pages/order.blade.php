@@ -1,11 +1,21 @@
 @extends('components.layouts.app')
 
 @php
-use App\Models\BestOffers;
-use App\Models\Menu;
+use App\Models\BestOffer;
+use App\Models\Shoe;
 
-$bestoffers = BestOffers::orderBy('id')->get();
-$menus = Menu::all()->groupBy('category');
+$bestoffers = BestOffer::with('shoe')
+    ->whereDate('start_date', '<=', now())
+    ->whereDate('end_date', '>=', now())
+    ->orderBy('id')
+    ->get();
+
+$shoes = Shoe::with(['category', 'bestOffer' => function ($q) {
+    $q->whereDate('start_date', '<=', now())
+      ->whereDate('end_date', '>=', now());
+}])->get()->groupBy(function($shoe) {
+    return $shoe->category ? $shoe->category->name : 'Tanpa Kategori';
+});
 
 function formatCategory($category) {
     return ucfirst(strtolower($category));
@@ -14,147 +24,290 @@ function formatCategory($category) {
 
 @push('styles')
 <style>
+:root {
+    --primary: #fe5b29;
+    --primary-dark: #d9480f;
+    --secondary: #fbbf24;
+    --success: #22c55e;
+    --dark: #1e293b;
+    --light: #f8fafc;
+}
+
 .gallery_section {
-   background: url("{{ asset('front/images/BG-Menu-2.jpg') }}") no-repeat center center;
-   background-size: cover;
-   padding: 80px 0;
-   color: white;
+    background: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), 
+                url("{{ asset('front/images/BG-Menu-2.jpg') }}") no-repeat center center;
+    background-size: cover;
+    padding: 80px 0;
+    color: white;
+    min-height: 100vh;
 }
 
-.gallery_taital {
-   color: white;
-   text-align: center;
-   margin-bottom: 40px;
+/* Always Glowing Hot Deals title */
+.hot-deals-title {
+    color: var(--primary);
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 40px;
+    text-shadow: 0 0 10px #fe5b29, 
+                 0 0 20px #fe5b29, 
+                 0 0 30px #fe5b29;
+    animation: glow 1.5s ease-in-out infinite alternate;
 }
 
-.gallery_box, .gallery_card {
-   background-color: rgba(0, 0, 0, 0.5);
-   padding: 20px;
-   border-radius: 10px;
-   text-align: center;
-   height: 100%;
-   display: flex;
-   flex-direction: column;
-   justify-content: space-between;
-   min-width: 250px;
-   flex: 0 0 auto;
+/* Glowing Best Offer Products */
+.best-offer-card {
+    background: rgba(254, 91, 41, 0.1);
+    border: 1px solid rgba(254, 91, 41, 0.3);
+    animation: pulse 2s ease-in-out infinite;
 }
 
-.gallery_img {
-   width: 100%;
-   height: 200px;
-   overflow: hidden;
-   border-radius: 10px;
-   margin-bottom: 15px;
+@keyframes glow {
+    from {
+        text-shadow: 0 0 5px #fe5b29,
+                     0 0 10px #fe5b29;
+    }
+    to {
+        text-shadow: 0 0 10px #fe5b29,
+                     0 0 20px #fe5b29,
+                     0 0 30px #fe5b29;
+    }
 }
 
-.gallery_img img {
-   width: 100%;
-   height: 100%;
-   object-fit: cover;
-   border-radius: 10px;
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(254, 91, 41, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(254, 91, 41, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(254, 91, 41, 0);
+    }
 }
 
-.types_text {
-   font-size: 18px;
-   font-weight: bold;
-   color: #fff;
-   margin-bottom: 8px;
-   min-height: 48px;
+/* Centered Category Titles */
+.category-title {
+    color: white;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin: 50px 0 30px;
+    text-align: center;
+    position: relative;
+    padding-bottom: 15px;
 }
 
-.looking_text {
-   color: #fbbf24;
-   font-size: 16px;
-   margin-bottom: 10px;
+.category-title:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 3px;
+    background: var(--primary);
 }
 
-.read_bt a {
-   display: inline-block;
-   padding: 10px 20px;
-   background-color: #fe5b29;
-   color: white;
-   border-radius: 5px;
-   transition: 0.3s ease;
-   text-decoration: none;
+/* Product Cards */
+.product-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 12px;
+    text-align: center;
+    transition: all 0.3s ease;
+    margin-bottom: 25px;
+    height: 100%;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
-.read_bt a:hover {
-   background-color: #d9480f;
+.product-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(254, 91, 41, 0.3);
+    border-color: rgba(254, 91, 41, 0.3);
 }
 
-.scroll-container {
-   display: flex;
-   overflow-x: auto;
-   gap: 20px;
-   padding-bottom: 10px;
-   scrollbar-width: none;
+.product-image {
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    position: relative;
 }
 
-.scroll-container::-webkit-scrollbar {
-   display: none;
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.product-card:hover .product-image img {
+    transform: scale(1.08);
+}
+
+.product-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--light);
+    margin-bottom: 15px;
+}
+
+.price-section {
+    margin-bottom: 20px;
+}
+
+.original-price {
+    color: #aaa;
+    text-decoration: line-through;
+    font-size: 0.95rem;
+}
+
+.discounted-price {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--light);
+    margin: 5px 0;
+}
+
+.discount-badge {
+    background: var(--success);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
+
+.order-btn {
+    display: inline-block;
+    padding: 10px 25px;
+    background: linear-gradient(to right, var(--primary), var(--primary-dark));
+    color: white;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-weight: 600;
+    width: 100%;
+    border: none;
+    box-shadow: 0 4px 8px rgba(254, 91, 41, 0.3);
+}
+
+.order-btn:hover {
+    background: linear-gradient(to right, var(--primary-dark), var(--primary));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(254, 91, 41, 0.4);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hot-deals-title {
+        font-size: 2rem;
+    }
+    
+    .category-title {
+        font-size: 1.5rem;
+    }
+    
+    .product-image {
+        height: 180px;
+    }
+}
+
+@media (max-width: 576px) {
+    .gallery_section {
+        padding: 60px 0;
+    }
+    
+    .hot-deals-title {
+        font-size: 1.8rem;
+    }
+    
+    .category-title {
+        font-size: 1.3rem;
+    }
 }
 </style>
 @endpush
 
 @section('order')
 <div class="gallery_section layout_padding">
-   <div class="container">
-      {{-- Best Offers --}}
-      <div class="row">
-         <div class="col-md-12">
-            <h1 class="gallery_taital">Our Best Offers</h1>
-         </div>
-      </div>
-      <div class="gallery_section_2">
-         <div class="row">
-            @forelse ($bestoffers as $item)
-               <div class="col-md-4 d-flex mb-4">
-                  <div class="gallery_box w-100">
-                     <div class="gallery_img">
-                        <img src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->name }}">
-                     </div>
-                     <h3 class="types_text">{{ $item->name }}</h3>
-                     <p class="looking_text">Rp {{ number_format($item->price, 0, ',', '.') }}</p>
-                     <div class="read_bt mt-3">
-                        <a href="http://localhost/customer/login">Order Now</a>
-                     </div>
-                  </div>
-               </div>
-            @empty
-               <div class="col-12 text-center text-white">
-                  <p>Tidak ada penawaran terbaik saat ini.</p>
-               </div>
-            @endforelse
-         </div>
-      </div>
-
-      {{-- Menu Per Kategori --}}
-      @foreach ($menus as $category => $menuItems)
-         @if (strtolower($category) === 'makanan' || strtolower($category) === 'minuman')
-            <div class="row mt-5">
-               <div class="col-md-12">
-                  <h1 class="gallery_taital">{{ formatCategory($category) }}</h1>
-               </div>
-            </div>
-            @foreach ($menuItems->chunk(5)->take(3) as $chunk)
-               <div class="scroll-container mb-4">
-                  @foreach ($chunk as $item)
-                     <div class="gallery_card">
-                        <div class="gallery_img">
-                           <img src="{{ asset('storage/' . $item->image) }}" alt="{{ $item->name }}">
+    <div class="container">
+        {{-- Best Offers --}}
+        <h2 class="hot-deals-title">HOT DEALS</h2>
+        
+        @if($bestoffers->count() > 0)
+        <div class="row">
+            @foreach ($bestoffers as $item)
+                @if ($item->shoe)
+                    @php
+                        $original = $item->shoe->price;
+                        $discount = $item->discount_percentage;
+                        $final = $original - ($original * $discount / 100);
+                    @endphp
+                    <div class="col-lg-4 col-md-6">
+                        <div class="product-card best-offer-card">
+                            <div class="product-image">
+                                <img src="{{ asset('storage/' . $item->shoe->image_url) }}" alt="{{ $item->shoe->name }}">
+                                <div class="discount-badge" style="position: absolute; top: 15px; right: 15px;">-{{ $discount }}%</div>
+                            </div>
+                            <h3 class="product-name">{{ $item->shoe->name }}</h3>
+                            <div class="price-section">
+                                <span class="original-price">Rp {{ number_format($original, 0, ',', '.') }}</span>
+                                <span class="discounted-price">Rp {{ number_format($final, 0, ',', '.') }}</span>
+                            </div>
+                            <a href="#" class="order-btn">Order Now</a>
                         </div>
-                        <h3 class="types_text">{{ $item->name }}</h3>
-                        <p class="looking_text">Rp {{ number_format($item->price, 0, ',', '.') }}</p>
-                        <div class="read_bt">
-                           <a href="http://localhost/customer/login">Order Now</a>
-                        </div>
-                     </div>
-                  @endforeach
-               </div>
+                    </div>
+                @endif
             @endforeach
-         @endif
-      @endforeach
-   </div>
+        </div>
+        @else
+        <div class="col-12 text-center text-white py-5">
+            <p>No special offers available at the moment</p>
+        </div>
+        @endif
+
+        {{-- Menu Per Kategori --}}
+        @foreach ($shoes as $category => $shoeItems)
+            <h3 class="category-title">{{ formatCategory($category) }}</h3>
+            
+            @if($shoeItems->count() > 0)
+                <div class="row">
+                    @foreach ($shoeItems as $item)
+                        @php
+                            $discount = optional($item->bestOffer)->discount_percentage ?? 0;
+                            $original = $item->price;
+                            $final = $discount > 0 ? $original - ($original * $discount / 100) : $original;
+                        @endphp
+                        <div class="col-lg-3 col-md-4 col-6 mb-4">
+                            <div class="product-card">
+                                <div class="product-image">
+                                    <img src="{{ asset('storage/' . $item->image_url) }}" alt="{{ $item->name }}">
+                                    @if($discount > 0)
+                                        <div class="discount-badge" style="position: absolute; top: 15px; right: 15px;">-{{ $discount }}%</div>
+                                    @endif
+                                </div>
+                                <h3 class="product-name">{{ $item->name }}</h3>
+                                <div class="price-section">
+                                    @if($discount > 0)
+                                        <span class="original-price">Rp {{ number_format($original, 0, ',', '.') }}</span>
+                                    @endif
+                                    <span class="discounted-price">Rp {{ number_format($final, 0, ',', '.') }}</span>
+                                </div>
+                                <a href="#" class="order-btn">Order Now</a>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="col-12 text-center text-white py-5">
+                    <p>No products in this category</p>
+                </div>
+            @endif
+        @endforeach
+    </div>
 </div>
 @endsection
